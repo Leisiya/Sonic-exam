@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Transaction {
+  signature     String   @id
+  slot          Int
+  blockTime     Int
+  feeLamports   BigInt
+  computeUnits  Int
+  error         String?
+  ingestedAt    DateTime @default(now())
+
+  programs      TransactionProgram[]
+  accounts      TransactionAccount[]
+
+  @@index([slot])
+  @@index([blockTime])
+}
+
+model TransactionProgram {
+  id          Int         @id @default(autoincrement())
+  signature   String
+  programId   String
+  transaction Transaction @relation(fields: [signature], references: [signature], onDelete: Cascade)
+
+  @@unique([signature, programId])
+  @@index([programId])
+}
+
+model TransactionAccount {
+  id          Int         @id @default(autoincrement())
+  signature   String
+  address     String
+  transaction Transaction @relation(fields: [signature], references: [signature], onDelete: Cascade)
+
+  @@unique([signature, address])
+  @@index([address])
+}
+
+model ProgramSlotUsage {
+  programId         String
+  slot              Int
+  txCount           Int    @default(0)
+  totalFeeLamports  BigInt @default(0)
+  totalComputeUnits Int    @default(0)
+
+  @@id([programId, slot])
+}
+
+model AccountActivity {
+  address   String
+  signature String
+  slot      Int
+  blockTime Int
+
+  @@id([address, signature])
+  @@index([address, slot(sort: Desc)])
+}
+
+model IngestionCheckpoint {
+  workerId           String   @id
+  lastEventId        Int      @default(0)
+  lastProcessedSlot  Int      @default(0)
+  updatedAt          DateTime @updatedAt
+}
+
+model ProcessedEvent {
+  eventId      Int      @id
+  eventType    String
+  processedAt  DateTime @default(now())
+}

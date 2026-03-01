@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+coverage
+.DS_Store
+.prisma
+
+.npm-cache
+.npmrc
