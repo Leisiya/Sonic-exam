@@ -4,6 +4,7 @@ dist
 coverage
 .DS_Store
 .prisma
+.idea
 
 .npm-cache
 .npmrc
