@@ -101,8 +101,8 @@ Purpose:
 Response fields:
 
 - `indexedTx`: total indexed transactions.
-- `uniquePrograms`: distinct program IDs seen.
-- `uniqueAccounts`: distinct account addresses seen.
+- `uniquePrograms`: distinct program IDs seen (string for bigint safety).
+- `uniqueAccounts`: distinct account addresses seen (string for bigint safety).
 - `lastProcessedEventId`: latest processed stream event.
 - `lastProcessedSlot`: latest processed slot checkpoint.
 - `uptimeSec`: API process uptime in seconds.
@@ -199,8 +199,8 @@ Response fields:
 ```json
 {
   "indexedTx": 3,
-  "uniquePrograms": 2,
-  "uniqueAccounts": 4,
+  "uniquePrograms": "2",
+  "uniqueAccounts": "4",
   "lastProcessedEventId": 7,
   "lastProcessedSlot": 103,
   "uptimeSec": 42
@@ -277,7 +277,7 @@ Set env vars for both app services:
 - `DATABASE_URL` (from Railway Postgres)
 - `NODE_ENV=production`
 - `LOG_LEVEL=info`
-- `WORKER_ID=default`
+- `WORKER_ID` (set explicitly and keep it unique per worker replica, e.g. `worker-1`, `worker-2`)
 - `PORT` (API only)
 
 Commands:

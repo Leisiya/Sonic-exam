@@ -141,18 +141,29 @@ export class IndexerRepository {
   }
 
   private async upsertCheckpoint(workerId: string, lastEventId: number): Promise<void> {
-    const existing = await this.db.ingestionCheckpoint.findUnique({ where: { workerId } });
-    const nextEventId = existing ? Math.max(existing.lastEventId, lastEventId) : lastEventId;
     const slotAgg = await this.db.transaction.aggregate({
       _max: { slot: true }
     });
     const canonicalHeadSlot = slotAgg._max?.slot ?? 0;
 
-    await this.db.ingestionCheckpoint.upsert({
-      where: { workerId },
-      create: { workerId, lastEventId: nextEventId, lastProcessedSlot: canonicalHeadSlot },
-      update: { lastEventId: nextEventId, lastProcessedSlot: canonicalHeadSlot }
-    });
+    await this.db.$executeRawUnsafe(
+      `
+      INSERT INTO "IngestionCheckpoint" ("workerId", "lastEventId", "lastProcessedSlot", "updatedAt")
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      ON CONFLICT ("workerId")
+      DO UPDATE SET
+        "lastEventId" = GREATEST("IngestionCheckpoint"."lastEventId", EXCLUDED."lastEventId"),
+        "lastProcessedSlot" = CASE
+          WHEN EXCLUDED."lastEventId" >= "IngestionCheckpoint"."lastEventId"
+            THEN EXCLUDED."lastProcessedSlot"
+          ELSE "IngestionCheckpoint"."lastProcessedSlot"
+        END,
+        "updatedAt" = CURRENT_TIMESTAMP
+      `,
+      workerId,
+      lastEventId,
+      canonicalHeadSlot
+    );
   }
 }
 
@@ -217,13 +228,7 @@ type PrismaClientLike = {
     deleteMany: (args: { where: { slot: { gt: number } } }) => Promise<unknown>;
   };
   ingestionCheckpoint: {
-    upsert: (args: {
-      where: { workerId: string };
-      create: { workerId: string; lastEventId: number; lastProcessedSlot: number };
-      update: { lastEventId: number; lastProcessedSlot: number };
-    }) => Promise<unknown>;
-    findUnique: (args: {
-      where: { workerId: string };
-    }) => Promise<{ lastEventId: number; lastProcessedSlot: number } | null>;
+    findUnique: (args: { where: { workerId: string } }) => Promise<{ lastEventId: number; lastProcessedSlot: number } | null>;
   };
+  $executeRawUnsafe: (query: string, ...values: unknown[]) => Promise<number>;
 };

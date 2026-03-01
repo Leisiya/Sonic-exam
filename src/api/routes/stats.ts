@@ -1,8 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 
-import { config } from '../../config.js';
-
 const startTime = Date.now();
 type CountRow = { count: bigint };
 
@@ -12,7 +10,9 @@ export function registerStatsRoutes(app: FastifyInstance, prisma: PrismaClient):
       prisma.transaction.count(),
       prisma.$queryRaw<CountRow[]>`SELECT COUNT(DISTINCT "programId")::bigint AS count FROM "TransactionProgram"`,
       prisma.$queryRaw<CountRow[]>`SELECT COUNT(DISTINCT "address")::bigint AS count FROM "TransactionAccount"`,
-      prisma.ingestionCheckpoint.findUnique({ where: { workerId: config.workerId } })
+      prisma.ingestionCheckpoint.findFirst({
+        orderBy: [{ lastEventId: 'desc' }, { updatedAt: 'desc' }]
+      })
     ]);
 
     const uniquePrograms = (programCountRows[0]?.count ?? 0n).toString();

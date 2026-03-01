@@ -8,12 +8,6 @@ import { IndexerRepository } from '../storage/indexer-repository.js';
 
 const logger = pino({ level: config.logLevel });
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 export async function runIngestionOnce(prisma: PrismaClient): Promise<number> {
   const checkpointRepo = new IndexerRepository(prisma);
   const checkpoint = await checkpointRepo.getCheckpoint(config.workerId);
@@ -30,10 +24,32 @@ export async function runIngestionOnce(prisma: PrismaClient): Promise<number> {
   return processedCount;
 }
 
-export async function runWorker(prisma: PrismaClient): Promise<void> {
+function sleepWithSignal(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+
+    const onAbort = (): void => {
+      clearTimeout(timeout);
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    };
+    signal.addEventListener('abort', onAbort);
+  });
+}
+
+export async function runWorker(prisma: PrismaClient, signal?: AbortSignal): Promise<void> {
+  const activeSignal = signal ?? new AbortController().signal;
   logger.info({ workerId: config.workerId }, 'worker started');
 
-  while (true) {
+  while (!activeSignal.aborted) {
     try {
       const processed = await runIngestionOnce(prisma);
       if (processed > 0) {
@@ -44,6 +60,8 @@ export async function runWorker(prisma: PrismaClient): Promise<void> {
       logger.error({ err: error }, 'worker iteration failed');
     }
 
-    await sleep(2_000);
+    await sleepWithSignal(2_000, activeSignal);
   }
+
+  logger.info({ workerId: config.workerId }, 'worker stopped');
 }
