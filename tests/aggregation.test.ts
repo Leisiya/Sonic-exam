@@ -8,7 +8,7 @@ describe('buildProgramUsageDeltas', () => {
       signature: 'sig-x',
       slot: 10,
       blockTime: 100,
-      feeLamports: 5000,
+      feeLamports: '5000',
       computeUnits: 900,
       accounts: ['a1'],
       programIds: ['p1', 'p2', 'p1'],

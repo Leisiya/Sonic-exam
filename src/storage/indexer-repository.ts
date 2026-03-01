@@ -16,6 +16,7 @@ export class IndexerRepository {
       skipDuplicates: true
     });
     if (claim.count === 0) {
+      await this.upsertCheckpoint(workerId, event.eventId);
       return { processed: false };
     }
 

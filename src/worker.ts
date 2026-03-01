@@ -1,8 +1,9 @@
 import { prisma } from './storage/client.js';
-import { config, warnIfWorkerIdMayConflict } from './config.js';
+import { config, ensureDatabaseUrl, warnIfWorkerIdMayConflict } from './config.js';
 import { runWorker } from './ingestion/worker-service.js';
 
 async function main(): Promise<void> {
+  ensureDatabaseUrl();
   warnIfWorkerIdMayConflict();
 
   const abortController = new AbortController();

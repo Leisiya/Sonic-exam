@@ -2,7 +2,7 @@ export type SvmTransaction = {
   signature: string;
   slot: number;
   blockTime: number;
-  feeLamports: number;
+  feeLamports: string;
   computeUnits: number;
   accounts: string[];
   programIds: string[];

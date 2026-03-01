@@ -1,6 +1,8 @@
 import { prisma } from './storage/client.js';
-import { config } from './config.js';
+import { config, ensureDatabaseUrl } from './config.js';
 import { buildApp } from './api/app.js';
+
+ensureDatabaseUrl();
 
 const app = buildApp(prisma);
 
