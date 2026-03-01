@@ -117,36 +117,6 @@ export class IndexerRepository {
   }
 
   private async processReorg(rollbackToSlot: number): Promise<void> {
-    const rowsToRollback = await this.db.transaction.findMany({
-      where: {
-        slot: {
-          gt: rollbackToSlot
-        }
-      },
-      select: {
-        signature: true
-      }
-    });
-    const signatures = rowsToRollback.map((row) => row.signature);
-
-    if (signatures.length > 0) {
-      await this.db.transactionProgram.deleteMany({
-        where: {
-          signature: {
-            in: signatures
-          }
-        }
-      });
-
-      await this.db.transactionAccount.deleteMany({
-        where: {
-          signature: {
-            in: signatures
-          }
-        }
-      });
-    }
-
     await this.db.accountActivity.deleteMany({
       where: {
         slot: {
@@ -173,11 +143,10 @@ export class IndexerRepository {
   }
 
   private async upsertCheckpoint(workerId: string, lastEventId: number, lastProcessedSlot: number): Promise<void> {
-    const now = new Date();
     await this.db.ingestionCheckpoint.upsert({
       where: { workerId },
-      create: { workerId, lastEventId, lastProcessedSlot, updatedAt: now },
-      update: { lastEventId, lastProcessedSlot, updatedAt: now }
+      create: { workerId, lastEventId, lastProcessedSlot },
+      update: { lastEventId, lastProcessedSlot }
     });
   }
 }
@@ -199,20 +168,6 @@ type PrismaClientLike = {
       }>;
       skipDuplicates: boolean;
     }) => Promise<{ count: number }>;
-    create: (args: {
-      data: {
-        signature: string;
-        slot: number;
-        blockTime: number;
-        feeLamports: bigint;
-        computeUnits: number;
-        error: string | null;
-      };
-    }) => Promise<unknown>;
-    findMany: (args: {
-      where: { slot: { gt: number } };
-      select: { signature: true };
-    }) => Promise<Array<{ signature: string }>>;
     deleteMany: (args: { where: { slot: { gt: number } } }) => Promise<unknown>;
   };
   transactionProgram: {
@@ -220,14 +175,12 @@ type PrismaClientLike = {
       data: Array<{ signature: string; programId: string }>;
       skipDuplicates: boolean;
     }) => Promise<unknown>;
-    deleteMany: (args: { where: { signature: { in: string[] } } }) => Promise<unknown>;
   };
   transactionAccount: {
     createMany: (args: {
       data: Array<{ signature: string; address: string }>;
       skipDuplicates: boolean;
     }) => Promise<unknown>;
-    deleteMany: (args: { where: { signature: { in: string[] } } }) => Promise<unknown>;
   };
   programSlotUsage: {
     upsert: (args: {
@@ -257,8 +210,8 @@ type PrismaClientLike = {
   ingestionCheckpoint: {
     upsert: (args: {
       where: { workerId: string };
-      create: { workerId: string; lastEventId: number; lastProcessedSlot: number; updatedAt: Date };
-      update: { lastEventId: number; lastProcessedSlot: number; updatedAt: Date };
+      create: { workerId: string; lastEventId: number; lastProcessedSlot: number };
+      update: { lastEventId: number; lastProcessedSlot: number };
     }) => Promise<unknown>;
     findUnique: (args: {
       where: { workerId: string };
