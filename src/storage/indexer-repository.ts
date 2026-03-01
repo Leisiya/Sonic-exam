@@ -120,25 +120,35 @@ export class IndexerRepository {
   }
 
   private async processReorg(rollbackToSlot: number): Promise<void> {
-    await this.db.transactionProgram.deleteMany({
+    const rowsToRollback = await this.db.transaction.findMany({
       where: {
-        transaction: {
-          slot: {
-            gt: rollbackToSlot
-          }
+        slot: {
+          gt: rollbackToSlot
         }
+      },
+      select: {
+        signature: true
       }
     });
+    const signatures = rowsToRollback.map((row) => row.signature);
 
-    await this.db.transactionAccount.deleteMany({
-      where: {
-        transaction: {
-          slot: {
-            gt: rollbackToSlot
+    if (signatures.length > 0) {
+      await this.db.transactionProgram.deleteMany({
+        where: {
+          signature: {
+            in: signatures
           }
         }
-      }
-    });
+      });
+
+      await this.db.transactionAccount.deleteMany({
+        where: {
+          signature: {
+            in: signatures
+          }
+        }
+      });
+    }
 
     await this.db.accountActivity.deleteMany({
       where: {
@@ -191,6 +201,10 @@ type PrismaClientLike = {
         error: string | null;
       };
     }) => Promise<unknown>;
+    findMany: (args: {
+      where: { slot: { gt: number } };
+      select: { signature: true };
+    }) => Promise<Array<{ signature: string }>>;
     deleteMany: (args: { where: { slot: { gt: number } } }) => Promise<unknown>;
   };
   transactionProgram: {
@@ -198,14 +212,14 @@ type PrismaClientLike = {
       data: Array<{ signature: string; programId: string }>;
       skipDuplicates: boolean;
     }) => Promise<unknown>;
-    deleteMany: (args: { where: { transaction: { slot: { gt: number } } } }) => Promise<unknown>;
+    deleteMany: (args: { where: { signature: { in: string[] } } }) => Promise<unknown>;
   };
   transactionAccount: {
     createMany: (args: {
       data: Array<{ signature: string; address: string }>;
       skipDuplicates: boolean;
     }) => Promise<unknown>;
-    deleteMany: (args: { where: { transaction: { slot: { gt: number } } } }) => Promise<unknown>;
+    deleteMany: (args: { where: { signature: { in: string[] } } }) => Promise<unknown>;
   };
   programSlotUsage: {
     upsert: (args: {
