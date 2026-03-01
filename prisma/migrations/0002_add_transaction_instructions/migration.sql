@@ -1,0 +1,2 @@
+ALTER TABLE "Transaction"
+ADD COLUMN "instructions" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

@@ -49,7 +49,7 @@ export function registerProgramRoutes(app: FastifyInstance, prisma: PrismaClient
       fromSlot: fromSlot ?? null,
       toSlot: toSlot ?? null,
       txCount,
-      totalFeeLamports: Number(totalFeeLamports),
+      totalFeeLamports: totalFeeLamports.toString(),
       totalComputeUnits
     };
   });

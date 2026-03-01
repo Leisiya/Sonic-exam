@@ -3,11 +3,11 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/api/app.js';
 import { getAllMockEvents } from '../src/ingestion/mock-stream.js';
 import { processEventTransactional } from '../src/ingestion/processor.js';
-import { createTestPrisma, hasDatabaseUrl, resetDatabase } from './helpers/db.js';
+import { createTestPrisma, requireDatabaseUrl, resetDatabase } from './helpers/db.js';
 
-const describeIfDb = hasDatabaseUrl() ? describe : describe.skip;
+requireDatabaseUrl();
 
-describeIfDb('api integration', () => {
+describe('api integration', () => {
   const prisma = createTestPrisma();
   const app = buildApp(prisma);
 
@@ -38,6 +38,8 @@ describeIfDb('api integration', () => {
   it('returns tx by signature and 404 for missing tx', async () => {
     const ok = await app.inject({ method: 'GET', url: '/tx/sig-100' });
     expect(ok.statusCode).toBe(200);
+    expect((ok.json() as { feeLamports: string; instructions: string[] }).feeLamports).toBe('5000');
+    expect((ok.json() as { feeLamports: string; instructions: string[] }).instructions).toEqual(['ix-1']);
 
     const missing = await app.inject({ method: 'GET', url: '/tx/not-exists' });
     expect(missing.statusCode).toBe(404);
@@ -51,6 +53,7 @@ describeIfDb('api integration', () => {
     });
     expect(ok.statusCode).toBe(200);
     expect((ok.json() as { txCount: number }).txCount).toBe(2);
+    expect((ok.json() as { totalFeeLamports: string }).totalFeeLamports).toBe('11500');
 
     const bad = await app.inject({
       method: 'GET',

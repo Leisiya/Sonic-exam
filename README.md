@@ -120,8 +120,13 @@ Path params:
 Response fields:
 
 - `signature`, `slot`, `blockTime`, `feeLamports`, `computeUnits`, `error`
+- `instructions[]`: persisted transaction instructions.
 - `programIds[]`: related programs.
 - `accounts[]`: related accounts.
+
+Notes:
+
+- `feeLamports` and `totalFeeLamports` are returned as strings to avoid precision loss on large values.
 
 Error:
 
@@ -210,24 +215,32 @@ Response fields:
 cp .env.example .env
 ```
 
-2. Install dependencies:
+2. Ensure a Postgres instance is available and `.env` points `DATABASE_URL` to it.
+
+3. Install dependencies:
 
 ```bash
 npm ci
 ```
 
-3. Generate Prisma client + migrate:
+4. Generate Prisma client + migrate:
 
 ```bash
 npm run prisma:generate
 npm run migrate:deploy
 ```
 
-4. Run API and worker in separate terminals:
+5. Run API and worker in separate terminals:
 
 ```bash
 npm run dev:api
 npm run dev:worker
+```
+
+6. Run tests (integration tests require `DATABASE_URL` and fail fast when missing):
+
+```bash
+npm run test
 ```
 
 ## Quality Gates

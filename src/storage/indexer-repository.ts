@@ -107,6 +107,7 @@ export class IndexerRepository {
           blockTime: tx.blockTime,
           feeLamports: BigInt(tx.feeLamports),
           computeUnits: tx.computeUnits,
+          instructions: tx.instructions,
           error: tx.error ?? null
         }
       ],
@@ -143,10 +144,14 @@ export class IndexerRepository {
   }
 
   private async upsertCheckpoint(workerId: string, lastEventId: number, lastProcessedSlot: number): Promise<void> {
+    const existing = await this.db.ingestionCheckpoint.findUnique({ where: { workerId } });
+    const nextEventId = existing ? Math.max(existing.lastEventId, lastEventId) : lastEventId;
+    const nextSlot = existing ? Math.max(existing.lastProcessedSlot, lastProcessedSlot) : lastProcessedSlot;
+
     await this.db.ingestionCheckpoint.upsert({
       where: { workerId },
-      create: { workerId, lastEventId, lastProcessedSlot },
-      update: { lastEventId, lastProcessedSlot }
+      create: { workerId, lastEventId: nextEventId, lastProcessedSlot: nextSlot },
+      update: { lastEventId: nextEventId, lastProcessedSlot: nextSlot }
     });
   }
 }
@@ -164,6 +169,7 @@ type PrismaClientLike = {
         blockTime: number;
         feeLamports: bigint;
         computeUnits: number;
+        instructions: string[];
         error: string | null;
       }>;
       skipDuplicates: boolean;

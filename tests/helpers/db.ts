@@ -4,6 +4,12 @@ export function hasDatabaseUrl(): boolean {
   return Boolean(process.env.DATABASE_URL);
 }
 
+export function requireDatabaseUrl(): void {
+  if (!hasDatabaseUrl()) {
+    throw new Error('DATABASE_URL is required for integration tests');
+  }
+}
+
 export function createTestPrisma(): PrismaClient {
   return new PrismaClient();
 }

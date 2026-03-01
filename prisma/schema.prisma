@@ -13,6 +13,7 @@ model Transaction {
   blockTime     Int
   feeLamports   BigInt
   computeUnits  Int
+  instructions  String[]
   error         String?
   ingestedAt    DateTime @default(now())
 

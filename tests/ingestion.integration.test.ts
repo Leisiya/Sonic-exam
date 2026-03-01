@@ -2,11 +2,11 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { getAllMockEvents } from '../src/ingestion/mock-stream.js';
 import { processEventTransactional } from '../src/ingestion/processor.js';
-import { createTestPrisma, hasDatabaseUrl, resetDatabase } from './helpers/db.js';
+import { createTestPrisma, requireDatabaseUrl, resetDatabase } from './helpers/db.js';
 
-const describeIfDb = hasDatabaseUrl() ? describe : describe.skip;
+requireDatabaseUrl();
 
-describeIfDb('ingestion integration', () => {
+describe('ingestion integration', () => {
   const prisma = createTestPrisma();
 
   beforeAll(async () => {

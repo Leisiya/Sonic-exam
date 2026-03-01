@@ -22,7 +22,8 @@ export function buildApp(prisma: PrismaClient): FastifyInstance {
       return reply.status(error.statusCode).send({ code: error.code, message: error.message });
     }
 
-    const message = error.message ?? 'Unexpected error';
+    app.log.error({ err: error }, 'unhandled error');
+    const message = config.nodeEnv === 'production' ? 'Internal server error' : (error.message ?? 'Unexpected error');
     return reply.status(500).send({ code: 'INTERNAL_ERROR', message });
   });
 

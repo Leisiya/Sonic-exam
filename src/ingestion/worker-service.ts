@@ -34,10 +34,14 @@ export async function runWorker(prisma: PrismaClient): Promise<void> {
   logger.info({ workerId: config.workerId }, 'worker started');
 
   while (true) {
-    const processed = await runIngestionOnce(prisma);
-    if (processed > 0) {
-      logger.info({ processed }, 'worker processed events batch');
-      continue;
+    try {
+      const processed = await runIngestionOnce(prisma);
+      if (processed > 0) {
+        logger.info({ processed }, 'worker processed events batch');
+        continue;
+      }
+    } catch (error) {
+      logger.error({ err: error }, 'worker iteration failed');
     }
 
     await sleep(2_000);
