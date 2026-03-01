@@ -11,6 +11,13 @@ Production-style Sonic SVM indexer + query API with idempotent ingestion, replay
 - GitHub Actions (lint/test/build)
 - Railway (deployment target)
 
+## Live Demo / Submission
+
+- GitHub: [https://github.com/Leisiya/Sonic-exam](https://github.com/Leisiya/Sonic-exam)
+- Base URL: [https://sonic-exam-production.up.railway.app](https://sonic-exam-production.up.railway.app)
+- Health: [https://sonic-exam-production.up.railway.app/health](https://sonic-exam-production.up.railway.app/health)
+- Stats: [https://sonic-exam-production.up.railway.app/stats](https://sonic-exam-production.up.railway.app/stats)
+
 ## Architecture Overview
 
 Two-process design in one repository:
@@ -69,6 +76,106 @@ Key indexes:
 - `GET /tx/:signature`
 - `GET /programs/:programId/usage?fromSlot=&toSlot=`
 - `GET /accounts/:address/activity?limit=`
+
+## Endpoint Details
+
+### `GET /health`
+
+Purpose:
+
+- Service liveness/readiness check.
+- Verifies API process and database connectivity.
+
+Response fields:
+
+- `status`: service status (`ok` when healthy).
+- `db`: database status (`up` when query succeeds).
+- `time`: server timestamp (ISO string).
+
+### `GET /stats`
+
+Purpose:
+
+- Returns ingestion and indexing summary for quick system validation.
+
+Response fields:
+
+- `indexedTx`: total indexed transactions.
+- `uniquePrograms`: distinct program IDs seen.
+- `uniqueAccounts`: distinct account addresses seen.
+- `lastProcessedEventId`: latest processed stream event.
+- `lastProcessedSlot`: latest processed slot checkpoint.
+- `uptimeSec`: API process uptime in seconds.
+
+### `GET /tx/:signature`
+
+Purpose:
+
+- Fetches canonical indexed transaction details by signature.
+
+Path params:
+
+- `signature`: transaction signature.
+
+Response fields:
+
+- `signature`, `slot`, `blockTime`, `feeLamports`, `computeUnits`, `error`
+- `programIds[]`: related programs.
+- `accounts[]`: related accounts.
+
+Error:
+
+- `404` with `{ code: "TX_NOT_FOUND", message: "Transaction not found" }` when signature is missing.
+
+### `GET /programs/:programId/usage?fromSlot=&toSlot=`
+
+Purpose:
+
+- Aggregated per-program usage over a slot range.
+
+Path params:
+
+- `programId`: target program.
+
+Query params:
+
+- `fromSlot` (optional, integer, inclusive lower bound)
+- `toSlot` (optional, integer, inclusive upper bound)
+
+Validation:
+
+- `fromSlot > toSlot` returns `400`.
+
+Response fields:
+
+- `programId`, `fromSlot`, `toSlot`
+- `txCount`
+- `totalFeeLamports`
+- `totalComputeUnits`
+
+### `GET /accounts/:address/activity?limit=`
+
+Purpose:
+
+- Recent activity feed for an account address, sorted by latest slot first.
+
+Path params:
+
+- `address`: account address.
+
+Query params:
+
+- `limit` (optional, default `20`, max `100`)
+
+Validation:
+
+- `limit > 100` returns `400`.
+
+Response fields:
+
+- `address`
+- `limit`
+- `activity[]` entries containing `address`, `signature`, `slot`, `blockTime`.
 
 ### Example Responses
 
@@ -194,4 +301,3 @@ Submission checklist:
 - Chose Fastify over heavier frameworks for faster delivery and strong performance.
 - Chose Prisma for schema/type speed and migration consistency.
 - Chose rollback+rebuild-on-new-events reorg model for deterministic correctness with low complexity.
-
