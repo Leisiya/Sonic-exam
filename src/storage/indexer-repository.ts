@@ -166,10 +166,11 @@ export class IndexerRepository {
   }
 
   private async upsertCheckpoint(workerId: string, lastEventId: number, lastProcessedSlot: number): Promise<void> {
+    const now = new Date();
     await this.db.ingestionCheckpoint.upsert({
       where: { workerId },
-      create: { workerId, lastEventId, lastProcessedSlot },
-      update: { lastEventId, lastProcessedSlot }
+      create: { workerId, lastEventId, lastProcessedSlot, updatedAt: now },
+      update: { lastEventId, lastProcessedSlot, updatedAt: now }
     });
   }
 }
@@ -234,8 +235,8 @@ type PrismaClientLike = {
   ingestionCheckpoint: {
     upsert: (args: {
       where: { workerId: string };
-      create: { workerId: string; lastEventId: number; lastProcessedSlot: number };
-      update: { lastEventId: number; lastProcessedSlot: number };
+      create: { workerId: string; lastEventId: number; lastProcessedSlot: number; updatedAt: Date };
+      update: { lastEventId: number; lastProcessedSlot: number; updatedAt: Date };
     }) => Promise<unknown>;
     findUnique: (args: {
       where: { workerId: string };
