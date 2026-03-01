@@ -99,9 +99,9 @@ export class IndexerRepository {
   }
 
   private async createTransactionIfMissing(tx: SvmTransaction): Promise<boolean> {
-    try {
-      await this.db.transaction.create({
-        data: {
+    const result = await this.db.transaction.createMany({
+      data: [
+        {
           signature: tx.signature,
           slot: tx.slot,
           blockTime: tx.blockTime,
@@ -109,14 +109,11 @@ export class IndexerRepository {
           computeUnits: tx.computeUnits,
           error: tx.error ?? null
         }
-      });
-      return true;
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        return false;
-      }
-      throw error;
-    }
+      ],
+      skipDuplicates: true
+    });
+
+    return result.count > 0;
   }
 
   private async processReorg(rollbackToSlot: number): Promise<void> {
@@ -191,6 +188,17 @@ type PrismaClientLike = {
     create: (args: { data: { eventId: number; eventType: string } }) => Promise<unknown>;
   };
   transaction: {
+    createMany: (args: {
+      data: Array<{
+        signature: string;
+        slot: number;
+        blockTime: number;
+        feeLamports: bigint;
+        computeUnits: number;
+        error: string | null;
+      }>;
+      skipDuplicates: boolean;
+    }) => Promise<{ count: number }>;
     create: (args: {
       data: {
         signature: string;
