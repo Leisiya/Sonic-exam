@@ -67,7 +67,7 @@ model IngestionCheckpoint {
   workerId           String   @id
   lastEventId        Int      @default(0)
   lastProcessedSlot  Int      @default(0)
-  updatedAt          DateTime @updatedAt
+  updatedAt          DateTime @default(now()) @updatedAt
 }
 
 model ProcessedEvent {

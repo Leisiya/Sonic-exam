@@ -55,7 +55,7 @@ CREATE TABLE "IngestionCheckpoint" (
     "workerId" TEXT NOT NULL,
     "lastEventId" INTEGER NOT NULL DEFAULT 0,
     "lastProcessedSlot" INTEGER NOT NULL DEFAULT 0,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "IngestionCheckpoint_pkey" PRIMARY KEY ("workerId")
 );
