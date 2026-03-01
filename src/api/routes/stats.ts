@@ -15,8 +15,8 @@ export function registerStatsRoutes(app: FastifyInstance, prisma: PrismaClient):
       prisma.ingestionCheckpoint.findUnique({ where: { workerId: config.workerId } })
     ]);
 
-    const uniquePrograms = Number(programCountRows[0]?.count ?? 0n);
-    const uniqueAccounts = Number(accountCountRows[0]?.count ?? 0n);
+    const uniquePrograms = (programCountRows[0]?.count ?? 0n).toString();
+    const uniqueAccounts = (accountCountRows[0]?.count ?? 0n).toString();
 
     return {
       indexedTx,

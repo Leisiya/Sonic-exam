@@ -11,25 +11,22 @@ export class IndexerRepository {
   public constructor(private readonly db: Prisma.TransactionClient | PrismaClientLike) {}
 
   public async processEvent(event: IngestionEvent, workerId: string): Promise<EventProcessingResult> {
-    const existing = await this.db.processedEvent.findUnique({ where: { eventId: event.eventId } });
-    if (existing) {
+    const claim = await this.db.processedEvent.createMany({
+      data: [{ eventId: event.eventId, eventType: event.type }],
+      skipDuplicates: true
+    });
+    if (claim.count === 0) {
       return { processed: false };
     }
 
     if (event.type === 'tx') {
       await this.processTx(event.tx);
-      await this.upsertCheckpoint(workerId, event.eventId, event.tx.slot);
-      await this.db.processedEvent.create({
-        data: { eventId: event.eventId, eventType: event.type }
-      });
+      await this.upsertCheckpoint(workerId, event.eventId);
       return { processed: true };
     }
 
     await this.processReorg(event.rollbackToSlot);
-    await this.upsertCheckpoint(workerId, event.eventId, event.rollbackToSlot);
-    await this.db.processedEvent.create({
-      data: { eventId: event.eventId, eventType: event.type }
-    });
+    await this.upsertCheckpoint(workerId, event.eventId);
     return { processed: true };
   }
 
@@ -143,23 +140,28 @@ export class IndexerRepository {
     });
   }
 
-  private async upsertCheckpoint(workerId: string, lastEventId: number, lastProcessedSlot: number): Promise<void> {
+  private async upsertCheckpoint(workerId: string, lastEventId: number): Promise<void> {
     const existing = await this.db.ingestionCheckpoint.findUnique({ where: { workerId } });
     const nextEventId = existing ? Math.max(existing.lastEventId, lastEventId) : lastEventId;
-    const nextSlot = existing ? Math.max(existing.lastProcessedSlot, lastProcessedSlot) : lastProcessedSlot;
+    const slotAgg = await this.db.transaction.aggregate({
+      _max: { slot: true }
+    });
+    const canonicalHeadSlot = slotAgg._max?.slot ?? 0;
 
     await this.db.ingestionCheckpoint.upsert({
       where: { workerId },
-      create: { workerId, lastEventId: nextEventId, lastProcessedSlot: nextSlot },
-      update: { lastEventId: nextEventId, lastProcessedSlot: nextSlot }
+      create: { workerId, lastEventId: nextEventId, lastProcessedSlot: canonicalHeadSlot },
+      update: { lastEventId: nextEventId, lastProcessedSlot: canonicalHeadSlot }
     });
   }
 }
 
 type PrismaClientLike = {
   processedEvent: {
-    findUnique: (args: { where: { eventId: number } }) => Promise<{ eventId: number } | null>;
-    create: (args: { data: { eventId: number; eventType: string } }) => Promise<unknown>;
+    createMany: (args: {
+      data: Array<{ eventId: number; eventType: string }>;
+      skipDuplicates: boolean;
+    }) => Promise<{ count: number }>;
   };
   transaction: {
     createMany: (args: {
@@ -174,6 +176,7 @@ type PrismaClientLike = {
       }>;
       skipDuplicates: boolean;
     }) => Promise<{ count: number }>;
+    aggregate: (args: { _max: { slot: true } }) => Promise<{ _max: { slot: number | null } }>;
     deleteMany: (args: { where: { slot: { gt: number } } }) => Promise<unknown>;
   };
   transactionProgram: {
