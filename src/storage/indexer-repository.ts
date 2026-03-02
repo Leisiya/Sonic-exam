@@ -140,12 +140,8 @@ export class IndexerRepository {
       }
     });
 
-    // Reorg may replace rolled-back tx events. Clearing tx event claims allows replay with reused event ids.
-    await this.db.processedEvent.deleteMany({
-      where: {
-        eventType: 'tx'
-      }
-    });
+    // After a rollback, all prior event claims must be replayable (including reorg events) to keep state deterministic.
+    await this.db.processedEvent.deleteMany({});
   }
 
   private async upsertCheckpoint(workerId: string, lastEventId: number): Promise<void> {
@@ -176,7 +172,7 @@ type PrismaClientLike = {
       data: Array<{ eventId: number; eventType: string }>;
       skipDuplicates: boolean;
     }) => Promise<{ count: number }>;
-    deleteMany: (args: { where: { eventType: string } }) => Promise<unknown>;
+    deleteMany: (args: { where?: { eventType?: string } }) => Promise<unknown>;
   };
   transaction: {
     createMany: (args: {
