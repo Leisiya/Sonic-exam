@@ -67,6 +67,8 @@ Key indexes:
 
 - Reorg event: `type = "reorg"` with `rollbackToSlot`.
 - Worker deletes data with `slot > rollbackToSlot` from canonical and aggregate tables.
+- Worker clears tx-type `ProcessedEvent` claims so rolled-back events can be replayed if event IDs are reused.
+- Already-canonical rows (`slot <= rollbackToSlot`) remain safe because `Transaction.signature` idempotency prevents duplicate aggregation.
 - Subsequent tx events re-populate deterministic state.
 
 ## API Endpoints

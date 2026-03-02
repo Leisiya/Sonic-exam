@@ -139,6 +139,13 @@ export class IndexerRepository {
         }
       }
     });
+
+    // Reorg may replace rolled-back tx events. Clearing tx event claims allows replay with reused event ids.
+    await this.db.processedEvent.deleteMany({
+      where: {
+        eventType: 'tx'
+      }
+    });
   }
 
   private async upsertCheckpoint(workerId: string, lastEventId: number): Promise<void> {
@@ -147,10 +154,9 @@ export class IndexerRepository {
     });
     const canonicalHeadSlot = slotAgg._max?.slot ?? 0;
 
-    await this.db.$executeRawUnsafe(
-      `
+    await this.db.$executeRaw`
       INSERT INTO "IngestionCheckpoint" ("workerId", "lastEventId", "lastProcessedSlot", "updatedAt")
-      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      VALUES (${workerId}, ${lastEventId}, ${canonicalHeadSlot}, CURRENT_TIMESTAMP)
       ON CONFLICT ("workerId")
       DO UPDATE SET
         "lastEventId" = GREATEST("IngestionCheckpoint"."lastEventId", EXCLUDED."lastEventId"),
@@ -160,11 +166,7 @@ export class IndexerRepository {
           ELSE "IngestionCheckpoint"."lastProcessedSlot"
         END,
         "updatedAt" = CURRENT_TIMESTAMP
-      `,
-      workerId,
-      lastEventId,
-      canonicalHeadSlot
-    );
+      `;
   }
 }
 
@@ -174,6 +176,7 @@ type PrismaClientLike = {
       data: Array<{ eventId: number; eventType: string }>;
       skipDuplicates: boolean;
     }) => Promise<{ count: number }>;
+    deleteMany: (args: { where: { eventType: string } }) => Promise<unknown>;
   };
   transaction: {
     createMany: (args: {
@@ -231,5 +234,5 @@ type PrismaClientLike = {
   ingestionCheckpoint: {
     findUnique: (args: { where: { workerId: string } }) => Promise<{ lastEventId: number; lastProcessedSlot: number } | null>;
   };
-  $executeRawUnsafe: (query: string, ...values: unknown[]) => Promise<number>;
+  $executeRaw: (query: TemplateStringsArray, ...values: unknown[]) => Promise<number>;
 };
