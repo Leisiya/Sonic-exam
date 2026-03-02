@@ -45,16 +45,23 @@ describe('ingestion integration', () => {
     }
 
     const before = await prisma.transaction.count();
+    const beforeSignatures = await prisma.transaction.findMany({
+      select: { signature: true },
+      orderBy: { signature: 'asc' }
+    });
 
     for (const event of events) {
       await processEventTransactional(prisma, event, 'default');
     }
 
     const after = await prisma.transaction.count();
-    const processedEventCount = await prisma.processedEvent.count();
+    const afterSignatures = await prisma.transaction.findMany({
+      select: { signature: true },
+      orderBy: { signature: 'asc' }
+    });
 
     expect(after).toBe(before);
-    expect(processedEventCount).toBe(events.length);
+    expect(afterSignatures).toEqual(beforeSignatures);
   });
 
   it('allows replayed tx eventId after reorg rollback', async () => {
